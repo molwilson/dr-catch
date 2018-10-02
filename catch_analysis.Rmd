@@ -7,6 +7,8 @@ output: html_document
 
 ```{r}
 library(dplyr)
+library(ggplot2)
+library(tidyr)
 ```
 
 
@@ -23,10 +25,14 @@ names(cdata) <- gsub("x2nd","second", names(cdata))
 names(cdata) <- gsub("x3rd","third", names(cdata))
 
 cdata <- cdata %>% filter(year!="2012", method!="Trunk") %>%
-  select(-c(date,day,video.or.photo,notes)) %>%
-  mutate(total.wt=(first.wt+second.wt+third.wt+lionfish.wt+lobster.large.wt+lobster.small.wt+octopus.wt+crab.wt+eel.wt))
-
-# need to adjust other columns to account for number of fishers
+  select(-c(date,day,video.or.photo,notes)) %>% 
+  mutate_at(vars(first.wt:other.n), funs (./n.fishers)) %>% # divide catch by number of fishers
+  uncount(n.fishers) %>% # duplicate rows based on number of fishers
+  mutate(
+    total.wt.inv=(first.wt+second.wt+third.wt+lionfish.wt+lobster.large.wt+lobster.small.wt+octopus.wt+crab.wt+eel.wt), 
+    total.wt=(first.wt+second.wt+third.wt), 
+    parrot.wt=(second.n.parrotfish/second.n*second.wt+third.n.parrotfish/third.n*third.wt), 
+    parrot.prop=(parrot.wt/total.wt))
 ```
 
 # Summary calculations
@@ -34,13 +40,26 @@ cdata <- cdata %>% filter(year!="2012", method!="Trunk") %>%
 - average % parrotfish caught, by gear type
 
 ```{r}
-total_sum <- cdata %>% group_by(method,year) %>% summarise(av.total.wt=sum(total.wt)/sum(n.fishers))
+# not explicitly including lobster, etc. in total weights (check with Tyler)
+parrot.wt_gear <- cdata %>% group_by(method) %>% summarise(parrotfish=mean(parrot.wt,na.rm=TRUE),other=mean(total.wt, na.rm=TRUE)) %>% gather("catch", "weight", 2:3)
+```
 
-parrot_sum <- cdata %>% group_by(method) %>% summarise(prop.parrot.wt=mean(second.n.parrotfish))
-                                                                           #*second.wt+third.n.parrotfish/third.n*third.wt)/total.wt))
+Exploratory scatter/boxplots...
+```{r}
+ggplot(cdata, aes(x=method, y=parrot.wt))+
+  geom_point()
+```
+
+
+Average daily catch per fisherman (lbs), proportion parrotfish
+```{r}
+ggplot(parrot.wt_gear, aes(factor(method), weight, fill=catch)) +
+  geom_bar(stat = "identity")
 ```
 
 
 # Questions for Tyler
 1. Have lobster weights already been subtracted from class weights (e.g. are frst/second/third class weights finfish only at this point?)
 2. Entries that are missing fish counts: is there a reason for this, or do you think these can still be extrated from videos?
+3. Price data (rough)
+4. Selectivity data?
