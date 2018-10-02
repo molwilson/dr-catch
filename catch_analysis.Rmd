@@ -1,0 +1,46 @@
+---
+title: "DR Catch Analysis"
+author: "Molly Wilson"
+date: "10/1/2018"
+output: html_document
+---
+
+```{r}
+library(dplyr)
+```
+
+
+# Import and format catch data
+
+```{r}
+cdata <- read.csv("catch_data.csv")
+
+names(cdata) <- names(cdata) %>% make.names() %>% tolower()
+names(cdata) <- gsub("number", "n", names(cdata))
+names(cdata) <- gsub("weight","wt", names(cdata))
+names(cdata) <- gsub("x1st","first", names(cdata))
+names(cdata) <- gsub("x2nd","second", names(cdata))
+names(cdata) <- gsub("x3rd","third", names(cdata))
+
+cdata <- cdata %>% filter(year!="2012", method!="Trunk") %>%
+  select(-c(date,day,video.or.photo,notes)) %>%
+  mutate(total.wt=(first.wt+second.wt+third.wt+lionfish.wt+lobster.large.wt+lobster.small.wt+octopus.wt+crab.wt+eel.wt))
+
+# need to adjust other columns to account for number of fishers
+```
+
+# Summary calculations
+- average total catch per fisherman, by gear type
+- average % parrotfish caught, by gear type
+
+```{r}
+total_sum <- cdata %>% group_by(method,year) %>% summarise(av.total.wt=sum(total.wt)/sum(n.fishers))
+
+parrot_sum <- cdata %>% group_by(method) %>% summarise(prop.parrot.wt=mean(second.n.parrotfish))
+                                                                           #*second.wt+third.n.parrotfish/third.n*third.wt)/total.wt))
+```
+
+
+# Questions for Tyler
+1. Have lobster weights already been subtracted from class weights (e.g. are frst/second/third class weights finfish only at this point?)
+2. Entries that are missing fish counts: is there a reason for this, or do you think these can still be extrated from videos?
