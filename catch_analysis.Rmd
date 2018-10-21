@@ -32,7 +32,12 @@ cdata <- cdata %>% filter(year!="2012", method!="Trunk") %>%
     total.wt.inv=(first.wt+second.wt+third.wt+lionfish.wt+lobster.large.wt+lobster.small.wt+octopus.wt+crab.wt+eel.wt), 
     total.wt=(first.wt+second.wt+third.wt), 
     parrot.wt=(second.n.parrotfish/second.n*second.wt+third.n.parrotfish/third.n*third.wt), 
-    parrot.prop=(parrot.wt/total.wt))
+    parrot.prop=(parrot.wt/total.wt),
+    grouper.wt=(first.n.grouper/second.n*first.wt+second.n.grouper/second.n*second.wt+third.n.grouper/third.n*third.wt),
+    snapper.wt=(first.n.snapper/second.n*first.wt+second.n.snapper/second.n*second.wt+third.n.snapper/third.n*third.wt),
+    grunt.wt=(second.n.grunt/second.n*second.wt+third.n.grunt/third.n*third.wt),
+    squirrel.wt=(third.n.squirrelfish/third.n*third.wt)
+    )
 ```
 
 # Summary calculations
@@ -41,20 +46,20 @@ cdata <- cdata %>% filter(year!="2012", method!="Trunk") %>%
 
 ```{r}
 # not explicitly including lobster, etc. in total weights (check with Tyler)
-parrot.wt_gear <- cdata %>% group_by(method) %>% summarise(parrotfish=mean(parrot.wt,na.rm=TRUE),other=mean(total.wt, na.rm=TRUE)) %>% gather("catch", "weight", 2:3)
+parrot.wt_gear <- cdata %>% group_by(method) %>% summarise(parrotfish=mean(parrot.wt,na.rm=TRUE), grouper=mean(grouper.wt,na.rm=TRUE),snapper=mean(snapper.wt,na.rm=TRUE),grunt=mean(grunt.wt,na.rm=TRUE),squirrel=mean(squirrel.wt,na.rm=TRUE),other=mean(total.wt-parrot.wt-grouper.wt-snapper.wt-grunt.wt-squirrel.wt, na.rm=TRUE)) %>% gather("catch", "weight", 2:7)
 ```
 
-Exploratory scatter/boxplots...
-```{r}
-ggplot(cdata, aes(x=method, y=parrot.wt))+
-  geom_point()
-```
 
 
 Average daily catch per fisherman (lbs), proportion parrotfish
 ```{r}
-ggplot(parrot.wt_gear, aes(factor(method), weight, fill=catch)) +
-  geom_bar(stat = "identity")
+methodlabs <- c("Spearfishing (compressor)", "Spearfishing (free)", "Other")
+ggplot(filter(parrot.wt_gear, method!="Gillnet"), aes(factor(method), weight, fill=factor(catch, levels=c("other","snapper","grunt","squirrel","grouper","parrotfish")))) +
+  geom_bar(stat = "identity") +
+  labs(y="Daily catch (lbs)",x="",fill="Taxon") +
+  scale_fill_brewer(palette="BrBG") +
+  scale_x_discrete(labels= methodlabs)
+ggsave("dr_catch.png")
 ```
 
 
